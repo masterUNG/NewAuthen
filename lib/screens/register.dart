@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:new_authen/screens/my_service.dart';
 
 class Register extends StatefulWidget {
   @override
@@ -9,6 +11,7 @@ class _RegisterState extends State<Register> {
   // Explicit
   final formKey = GlobalKey<FormState>();
   String nameString, emailString, passwordString;
+  FirebaseAuth firebaseAuth = FirebaseAuth.instance;
 
   // Method
   Widget uploadButton() {
@@ -18,8 +21,60 @@ class _RegisterState extends State<Register> {
         print('Click Upload');
         if (formKey.currentState.validate()) {
           formKey.currentState.save();
-          print('name = $nameString, email = $emailString, password = $passwordString');
+          print(
+              'name = $nameString, email = $emailString, password = $passwordString');
+          registerFirebase();
         }
+      },
+    );
+  }
+
+  Future<void> registerFirebase() async {
+    await firebaseAuth
+        .createUserWithEmailAndPassword(
+            email: emailString, password: passwordString)
+        .then((response) {
+      print('Register Success');
+      setupDisplayName();
+    }).catchError((response) {
+      String errorString = response.message;
+      print('error = $errorString');
+      showAlertDialog(errorString);
+    });
+  }
+
+  Future<void> setupDisplayName() async {
+    await firebaseAuth.currentUser().then((response) {
+      UserUpdateInfo updateInfo = UserUpdateInfo();
+      updateInfo.displayName = nameString;
+      response.updateProfile(updateInfo);
+
+      var myServiceRoute =
+          MaterialPageRoute(builder: (BuildContext context) => MyService());
+      Navigator.of(context)
+          .pushAndRemoveUntil(myServiceRoute, (Route<dynamic> route) => false);
+    });
+  }
+
+  void showAlertDialog(String messageString) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Cannot Register',
+            style: TextStyle(color: Colors.red),
+          ),
+          content: Text(messageString),
+          actions: <Widget>[
+            FlatButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            )
+          ],
+        );
       },
     );
   }
@@ -28,6 +83,7 @@ class _RegisterState extends State<Register> {
     return Container(
       width: 200.0,
       child: TextFormField(
+        keyboardType: TextInputType.text,
         decoration: InputDecoration(
           icon: Icon(
             Icons.face,
@@ -55,6 +111,7 @@ class _RegisterState extends State<Register> {
     return Container(
       width: 200.0,
       child: TextFormField(
+        keyboardType: TextInputType.emailAddress,
         decoration: InputDecoration(
           icon: Icon(
             Icons.email,
